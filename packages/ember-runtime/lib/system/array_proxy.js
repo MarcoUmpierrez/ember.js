@@ -132,7 +132,7 @@ export default EmberObject.extend(MutableArray, {
     let arrangedContent = get(this, 'arrangedContent');
     let len = arrangedContent ? get(arrangedContent, 'length') : 0;
 
-    this.arrangedContentArrayWillChange(this, 0, len, undefined);
+    this._arrangedContentArrayWillChange(this, 0, len, undefined);
 
     this._teardownArrangedContent(arrangedContent);
   }),
@@ -143,7 +143,7 @@ export default EmberObject.extend(MutableArray, {
 
     this._setupArrangedContent();
 
-    this.arrangedContentArrayDidChange(this, 0, undefined, len);
+    this._arrangedContentArrayDidChange(this, 0, undefined, len);
   }),
 
   _setupArrangedContent() {
@@ -155,8 +155,8 @@ export default EmberObject.extend(MutableArray, {
         isArray(arrangedContent) || arrangedContent.isDestroyed);
 
       addArrayObserver(arrangedContent, this, {
-        willChange: 'arrangedContentArrayWillChange',
-        didChange: 'arrangedContentArrayDidChange'
+        willChange: '_arrangedContentArrayWillChange',
+        didChange: '_arrangedContentArrayDidChange'
       });
     }
   },
@@ -166,8 +166,8 @@ export default EmberObject.extend(MutableArray, {
 
     if (arrangedContent) {
       removeArrayObserver(arrangedContent, this, {
-        willChange: 'arrangedContentArrayWillChange',
-        didChange: 'arrangedContentArrayDidChange'
+        willChange: '_arrangedContentArrayWillChange',
+        didChange: '_arrangedContentArrayDidChange'
       });
     }
   },
@@ -288,11 +288,11 @@ export default EmberObject.extend(MutableArray, {
     return arr.slice(...arguments);
   },
 
-  arrangedContentArrayWillChange(item, idx, removedCnt, addedCnt) {
+  _arrangedContentArrayWillChange(arrangedContent, idx, removedCnt, addedCnt) {
     this.arrayContentWillChange(idx, removedCnt, addedCnt);
   },
 
-  arrangedContentArrayDidChange(item, idx, removedCnt, addedCnt) {
+  _arrangedContentArrayDidChange(arrangedContent, idx, removedCnt, addedCnt) {
     this.arrayContentDidChange(idx, removedCnt, addedCnt);
   },
 
