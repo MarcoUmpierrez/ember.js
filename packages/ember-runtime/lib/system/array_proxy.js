@@ -1,7 +1,6 @@
 import {
   get,
   computed,
-  _beforeObserver,
   observer,
   beginPropertyChanges,
   endPropertyChanges,
@@ -128,22 +127,29 @@ export default EmberObject.extend(MutableArray, {
     get(this, 'content').replace(idx, amt, objects);
   },
 
-  _arrangedContentWillChange: _beforeObserver('arrangedContent', function() {
-    let arrangedContent = get(this, 'arrangedContent');
-    let len = arrangedContent ? get(arrangedContent, 'length') : 0;
-
-    this._arrangedContentArrayWillChange(this, 0, len, undefined);
-
-    this._teardownArrangedContent(arrangedContent);
-  }),
-
   _arrangedContentDidChange: observer('arrangedContent', function() {
-    let arrangedContent = get(this, 'arrangedContent');
-    let len = arrangedContent ? get(arrangedContent, 'length') : 0;
+    let len = this._arrangedContent ? get(this._arrangedContent, 'length') : 0;
 
+    if (this._arrangedContent) {
+      // This is wrong, because it's caching objectAt after the arrangedContent is changed
+      this._cache = this.toArray();
+
+      /*
+      this.cache = this._arrangedContent.slice(); // this is also wrong because it doesn't take into account objectAtContent
+      */
+    } else {
+      this._cache = [];
+    }
+
+    this._arrangedContentArrayWillChange(this, 0, len, -1);
+
+    this._teardownArrangedContent();
     this._setupArrangedContent();
 
-    this._arrangedContentArrayDidChange(this, 0, undefined, len);
+    len = this._arrangedContent ? get(this._arrangedContent, 'length') : 0;
+
+    this._cache = null;
+    this._arrangedContentArrayDidChange(this, 0, -1, len);
   }),
 
   _setupArrangedContent() {
@@ -158,28 +164,38 @@ export default EmberObject.extend(MutableArray, {
         willChange: '_arrangedContentArrayWillChange',
         didChange: '_arrangedContentArrayDidChange'
       });
+
+      this._arrangedContent = arrangedContent;
     }
   },
 
   _teardownArrangedContent() {
-    let arrangedContent = get(this, 'arrangedContent');
-
-    if (arrangedContent) {
-      removeArrayObserver(arrangedContent, this, {
+    if (this._arrangedContent) {
+      removeArrayObserver(this._arrangedContent, this, {
         willChange: '_arrangedContentArrayWillChange',
         didChange: '_arrangedContentArrayDidChange'
       });
+
+      this._arrangedContent = null;
     }
   },
 
   objectAt(idx) {
-    return get(this, 'content') && this.objectAtContent(idx);
+    if (this._cache) {
+      return this._cache[idx];
+    } else {
+      return get(this, 'content') && this.objectAtContent(idx);
+    }
   },
 
   length: computed(function() {
-    let arrangedContent = get(this, 'arrangedContent');
-    return arrangedContent ? get(arrangedContent, 'length') : 0;
-    // No dependencies since Enumerable notifies length of change
+    if (this._cache) {
+      return this._cache.length;
+    } else {
+      let arrangedContent = get(this, 'arrangedContent');
+      return arrangedContent ? get(arrangedContent, 'length') : 0;
+      // No dependencies since Enumerable notifies length of change
+    }
   }),
 
   _replace(idx, amt, objects) {
@@ -298,6 +314,8 @@ export default EmberObject.extend(MutableArray, {
 
   init() {
     this._super(...arguments);
+    this._arrangedContent = null;
+    this._cache = null;
     this._setupArrangedContent();
   },
 
